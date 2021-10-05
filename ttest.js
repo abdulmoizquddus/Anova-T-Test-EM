@@ -14,8 +14,13 @@ var margin = { top: 20, right: 30, bottom: 30, left: 40 },
 width2 = 310;
 height2 = 200;
 // ??
+likelihoodbtnselected = true;
+marginalbtnselected = false;
+jointsbtnselected = false;
+
 var highlightedPoint = [];
 var AllData = {};
+AllData.DataPoints = [];
 //
 var svg = d3
   .select(".box")
@@ -30,24 +35,6 @@ var svg = d3
   .attr("height", height + margin.top + margin.bottom)
   .append("g")
   .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-anova_text = svg
-  .append("g")
-  .append("foreignObject")
-  .attr("width", 600)
-  .attr("height", 200)
-  .attr("id", "anova_summary_text")
-  //.style("opacity", 50)
-  .append("xhtml:body");
-// 2nd svg
-
-var svg2 = d3
-  .select(".box")
-  .append("svg")
-  .attr("id", "svg2")
-  .attr("width", width2)
-  .attr("height", height2)
-  .append("g")
-  .attr("transform", "translate(" + margin.left + "," + margin.top / 3 + ")");
 
 // Mouse pointer
 var focus = svg
@@ -68,13 +55,6 @@ var focusText = svg
 var x_scale = d3.scaleLinear().rangeRound([0, width]);
 // y-axis scale
 var y_scale = d3.scaleLinear().domain([0, 0.5]).range([height, 0]);
-// x-axis scale	for svg2
-var x_scale2 = d3.scaleLinear().rangeRound([0, width / 3.4]);
-// y-axis scale for svg2
-var y_scale2 = d3
-  .scaleLinear()
-  .domain([0, 0.5])
-  .range([height / 3, 0]);
 // x-axis view
 var xAxis = svg
   .append("g")
@@ -83,18 +63,6 @@ var xAxis = svg
   .call(d3.axisBottom(x_scale));
 // y-axis view
 var yAxis = svg.append("g").attr("class", "yaxis").call(d3.axisLeft(y_scale));
-
-// x-axis view in svg2
-var xAxis2 = svg2
-  .append("g")
-  .attr("class", "xaxis")
-  .attr("transform", "translate(0," + height / 3 + ")")
-  .call(d3.axisBottom(x_scale2));
-// y-axis view in svg2
-var yAxis2 = svg2
-  .append("g")
-  .attr("class", "yaxis")
-  .call(d3.axisLeft(y_scale2));
 //control section
 var inputSec = d3.select(".controls").append("div").attr("id", "inputsec");
 // dropdownbox in control panel
@@ -104,7 +72,7 @@ var dropDown = dropDownbox
   .append("select")
   .attr("name", "name-list")
   .attr("id", "dropdown");
-var dropDownOptions = [1, 2];
+var dropDownOptions = [0, 1, 2];
 var options = dropDown
   .selectAll("option")
   .data(dropDownOptions)
@@ -124,9 +92,7 @@ var circle_global_mean;
 //
 d3.select("#dropdown").on("input", function () {
   d3.select(".inputbox_xrange_labels").remove();
-  d3.select(".alphadiv").remove();
   d3.selectAll(".labels").remove();
-  d3.select(".radbtncontainer").remove();
   //d3.select(".inputbox0").remove();
   d3.select(".xrange_labels").remove();
   d3.selectAll(".inputbox").remove();
@@ -135,32 +101,16 @@ d3.select("#dropdown").on("input", function () {
   }
   //console.log(this.value);
   dataPoints_groups = [];
-  setupControlPanel(this.value);
 });
 // Control panel
 function setupControlPanel(noOfGroups) {
   //console.log("setupControlPanel", noOfGroups);
   // X-axis range section
 
-  alphadiv = inputSec.append("div").attr("class", "alphadiv");
-  alphadiv.append("label").attr("for", "alphavalue").text("Confidence Level");
-  alphadiv
-    .append("input")
-    .attr("type", "number")
-    .attr("id", "alphavalue")
-    .attr("min", "0.01")
-    .attr("max", "0.99")
-    .attr("step", "0.01")
-    .attr("value", "0.95")
-    .on("input", function () {
-      calc_param();
-      visualize();
-    });
-
   var xrange_labels = inputSec.append("div").attr("class", "xrange_labels");
   xrange_labels
     .selectAll("li")
-    .data(["x-Min", "x-Max"])
+    .data(["X-min", "X-max"])
     .enter()
     .append("li")
     .attr("class", "labels")
@@ -188,105 +138,33 @@ function setupControlPanel(noOfGroups) {
   // Group parametets section
   var groups = new Array(noOfGroups).fill(0);
   // intialize view components
-  var param_labels = inputSec.append("div").attr("class", "labels");
-  label_names = ["Mean (μ)", "SD (σ)", "Sample Points", "Input Datapoints"];
-  param_labels
-    .selectAll("li")
-    .data(label_names)
-    .enter()
-    .append("li")
-    .attr("class", "labels")
-    .text(function (d) {
-      return d;
-    });
-  for (let group_i = 0; group_i < noOfGroups; group_i++) {
-    groups[group_i] = inputSec.append("div").attr("class", "inputbox");
-
-    groups[group_i]
-      .append("input")
-      .attr("type", "number")
-      .attr("id", "mean" + group_i + "")
-      .attr("name", "field1")
-      .attr("value", group_i + 15)
-      .attr("step", 0.1);
-
-    groups[group_i]
-      .append("input")
-      .attr("type", "number")
-      .attr("id", "sd" + group_i + "")
-      .attr("name", "field2")
-      .attr("min", 1)
-      .attr("step", "0.1")
-      .attr("value", 1);
-
-    groups[group_i]
-      .append("input")
-      .attr("type", "number")
-      .attr("id", "n" + group_i + "")
-      .attr("name", "field3")
-      .attr("min", 5)
-      .attr("step", "1")
-      .attr("value", 10);
-
-    groups[group_i]
-      .append("input")
-      .attr("type", "checkbox")
-      .attr("id", "selected_group_" + group_i + "")
-      .attr("name", "checkBox_AddDataPoint")
-      .property("checked", false)
-      .on("change", input_datapoints_checkbox_update)
-      .on("mouseup", function () {})
-      .on("mousemove", function () {})
-      .on("mouseout", function () {})
-      .on("mouseover", function () {});
-  }
-
-  Radbtncontainer = inputSec.append("div").attr("class", "radbtncontainer");
-  firstcon = Radbtncontainer.append("div");
-  firstcon.append("label").attr("for", "rad0").text("μ < x̄");
-  firstcon
-    .append("input")
-    .attr("type", "radio")
-    .attr("id", "rad0")
-    .on("change", radiobtnchange);
-  seccon = Radbtncontainer.append("div");
-  seccon.append("label").attr("for", "rad1").text("μ != x̄");
-  seccon
-    .append("input")
-    .attr("type", "radio")
-    .attr("checked", true)
-    .attr("id", "rad1")
-    .on("change", radiobtnchange);
-  thirdcon = Radbtncontainer.append("div");
-  thirdcon.append("label").attr("for", "rad2").text("μ > x̄");
-  thirdcon
-    .append("input")
-    .attr("type", "radio")
-    .attr("id", "rad2")
-    .on("change", radiobtnchange);
-
-  if (d3.select("#dropdown").property("value") == 2) {
-    one = "1";
-    two = "2";
-    d3.select("label[for=rad0]").text("x̄1 < x̄2");
-    d3.select("label[for=rad1]").text("x̄1 != x̄2");
-    d3.select("label[for=rad2]").text("x̄1 > x̄2");
-  }
-
-  sample_refresh_btn = inputSec.append("div").attr("class", "inputbox");
-  sample_refresh_btn
+  initialize_btn_div = inputSec.append("div").attr("class", "inputbox");
+  initialize_btn_div
     .append("input")
     .attr("type", "button")
-    .attr("id", "sample-button")
-    .attr("value", "Sample");
-  d3.select("#sample-button").on("click", function () {
-    if (d3.select("#dropdown").property("value") == 1) {
-      update_data(0);
-    } else if (d3.select("#dropdown").property("value") == 2) {
-      update_data(0);
-      update_data(1);
-    }
-  });
+    .attr("id", "initialize-button")
+    .attr("value", "Initialize")
+    .on("click", function () {
+      initialization(2);
+      visualize();
+      output_table();
+      plot_distributions(2);
+      setup_axis();
+    });
+
+  iterate_btn_div = inputSec.append("div").attr("class", "inputbox");
+  iterate_btn_div
+    .append("input")
+    .attr("type", "button")
+    .attr("id", "iterate-button")
+    .attr("value", "Iterate")
+    .on("click", function () {
+      expectation(2);
+      maximization(2);
+      visualize();
+      output_table();
+    });
+
   download_btn_div = inputSec.append("div").attr("class", "inputbox");
   download_btn_div
     .append("input")
@@ -304,17 +182,45 @@ function setupControlPanel(noOfGroups) {
     a.click();
   });
 
-  // initialize model: arrays in dataPoints_Groups
-  for (let group_i = 0; group_i < noOfGroups; group_i++) {
-    dataPoints_groups.push({
-      datapoints: sample_from_dist(
-        (mean = d3.select("#mean" + group_i + "").property("value")),
-        d3.select("#sd" + group_i + "").property("value"),
-        d3.select("#n" + group_i + "").property("value")
-      ),
+  output_box = inputSec.append("div").attr("class", "outputbox");
+  outputboxheader = output_box.append("div").attr("class", "outputboxheader");
+  table_div = output_box.append("div").attr("class", "outputtablediv");
+  table = table_div.append("table").attr("class", "outputtable");
+  outputboxheader
+    .append("input")
+    .attr("type", "button")
+    .attr("class", "tabs")
+    .attr("value", "Likelihood")
+    .on("click", function () {
+      likelihoodbtnselected = true;
+      marginalbtnselected = false;
+      jointsbtnselected = false;
+      output_table();
     });
-  }
-  calc_param();
+  outputboxheader
+    .append("input")
+    .attr("type", "button")
+    .attr("class", "tabs")
+    .attr("value", "Marginal")
+    .on("click", function () {
+      likelihoodbtnselected = false;
+      marginalbtnselected = true;
+      jointsbtnselected = false;
+      output_table();
+    });
+  outputboxheader
+    .append("input")
+    .attr("type", "button")
+    .attr("class", "tabs")
+    .attr("value", "Joints")
+    .on("click", function () {
+      likelihoodbtnselected = false;
+      marginalbtnselected = false;
+      jointsbtnselected = true;
+      output_table();
+    });
+  // initialize model: arrays in dataPoints_Groups
+  // calc_param();
   visualize();
   register_listeners();
 }
@@ -323,28 +229,8 @@ function visualize() {
   // console.log("visualize");
   setup_axis();
   plot_datapoints();
-  plot_distributions();
+  // plot_distributions(2);
   setup_axis();
-  plot_tdistribution();
-}
-
-function input_datapoints_checkbox_update() {
-  if (this.checked) {
-    // deselect checkboxes of all other groups
-    for (let group_i = 0; group_i < dataPoints_groups.length; group_i++) {
-      if (this.id != "selected_group_" + group_i + "") {
-        d3.select("#selected_group_" + group_i + "").node().checked = false;
-      }
-    }
-    selected_group = parseInt(this.id.substring(15, this.id.length));
-    // erase the datapoints of selected group, user will create again
-    dataPoints_groups[selected_group].datapoints = [];
-    calc_param();
-    visualize();
-  }
-  if (!this.checked) {
-    selected_group = -1;
-  }
 }
 
 function register_listeners() {
@@ -357,31 +243,7 @@ function register_listeners() {
   });
 
   //
-  for (let i = 0; i < d3.select("#dropdown").property("value"); i++) {
-    d3.select("#mean" + i + "").on("input", function () {
-      update_data(i);
-    });
-    d3.select("#sd" + i + "").on("input", function () {
-      update_data(i);
-    });
-    d3.select("#n" + i + "").on("input", function () {
-      update_data(i);
-    });
-  }
 }
-
-function update_data(group_i) {
-  dataPoints_groups[group_i] = {
-    datapoints: sample_from_dist(
-      (mean = d3.select("#mean" + group_i + "").property("value")),
-      (sd = d3.select("#sd" + group_i + "").property("value")),
-      (points = d3.select("#n" + group_i + "").property("value"))
-    ),
-  };
-  calc_param();
-  visualize();
-}
-
 function sortByProperty(property) {
   return function (a, b) {
     if (a[property] > b[property]) return 1;
@@ -391,7 +253,7 @@ function sortByProperty(property) {
   };
 }
 
-function plot_distributions() {
+function plot_distributions(K) {
   svg.selectAll("path").remove();
   var line = d3
     .line()
@@ -403,11 +265,11 @@ function plot_distributions() {
     });
   // console.log("dg",dataPoints_groups);
   //console.log("ds", dataPoints_stats)
-  for (let group_i = 0; group_i < dataPoints_groups.length; group_i++) {
+  for (let group_i = 0; group_i < K; group_i++) {
     // if (dataPoints_groups[group_i].n < 2)
     // 	continue; // group has less than 2 members yet.
-    var mean = Number(d3.select("#mean" + group_i + "").property("value"));
-    var sd = Number(d3.select("#sd" + group_i + "").property("value"));
+    var mean = AllData.mu_estimates[group_i];
+    var sd = Math.sqrt(AllData.cov_estimates[group_i]);
     //console.log(mean,sd)
     var datapoints = [];
     var left = mean - 4 * sd;
@@ -447,6 +309,74 @@ function sample_from_dist(mean, sd, points) {
   return datapoints;
 }
 
+function output_table() {
+  d3.select(".outputtable").selectAll("tr").remove();
+  if (likelihoodbtnselected) {
+    tr = ["Index", "Likelihood_K1", "Likelihood_K1"];
+  } else if (marginalbtnselected) {
+    tr = ["Index", "Marginal"];
+  } else if (jointsbtnselected) {
+    tr = ["Index", "Joint_K1", "Joint_K2"];
+  }
+  table
+    .append("tr")
+    .selectAll("th")
+    .data(tr)
+    .enter()
+    .append("th")
+    .text(function (d) {
+      return d;
+    });
+  if (likelihoodbtnselected) {
+    for (let row = 0; row < AllData.clusters.likelihood[0].length; row++) {
+      temp_ary = [];
+      temp_ary.push(row);
+      temp_ary.push(AllData.clusters.likelihood[0][row]);
+      temp_ary.push(AllData.clusters.likelihood[1][row]);
+      table
+        .append("tr")
+        .selectAll("td")
+        .data(temp_ary)
+        .enter()
+        .append("td")
+        .text(function (d) {
+          return d;
+        });
+    }
+  } else if (marginalbtnselected) {
+    for (let row = 0; row < AllData.clusters.marginal.length; row++) {
+      temp_ary = [];
+      temp_ary.push(row);
+      temp_ary.push(AllData.clusters.marginal[row]);
+      table
+        .append("tr")
+        .selectAll("td")
+        .data(temp_ary)
+        .enter()
+        .append("td")
+        .text(function (d) {
+          return d;
+        });
+    }
+  } else if (jointsbtnselected) {
+    for (let row = 0; row < AllData.clusters.jointprob[0].length; row++) {
+      temp_ary = [];
+      temp_ary.push(row);
+      temp_ary.push(AllData.clusters.jointprob[0][row]);
+      temp_ary.push(AllData.clusters.jointprob[1][row]);
+      table
+        .append("tr")
+        .selectAll("td")
+        .data(temp_ary)
+        .enter()
+        .append("td")
+        .text(function (d) {
+          return d;
+        });
+    }
+  }
+}
+
 function sortByProperty(property) {
   return function (a, b) {
     if (a[property] > b[property]) return 1;
@@ -460,144 +390,144 @@ function plot_datapoints() {
   //console.log('	plotting datapoints', dataPoints_groups)
   //setup_axis()
   svg.selectAll("circle").remove();
-  for (let group_i = 0; group_i < dataPoints_groups.length; group_i++) {
-    circles[group_i] = svg
-      .append("g")
-      .selectAll("circle")
-      .data(dataPoints_groups[group_i].datapoints)
-      .enter()
-      .append("circle")
-      .attr("cy", height)
-      .attr("fill", fillcolors[group_i])
-      .style("opacity", "0.5")
-      .attr("cx", function (d) {
-        return x_scale(d.Xi);
-      })
-      .attr("r", 5)
-      .attr("stroke", fillcolors[group_i])
-      .attr("stroke-width", 0)
-      .on("mouseover", function (d) {
-        highlightedPoint = [];
-        highlightedPoint.push({
-          Xi: d.Xi,
-          P_Xi: d.P_Xi,
-        });
-        console.log(d.Xi, d.P_Xi);
-        d3.select(this)
-          .transition()
-          .duration(100)
-          .style("opacity", "1")
-          .attr("stroke-width", 5);
-
-        svg
-          .append("line")
-          .attr("class", "hoverlines")
-          .style("stroke", "grey")
-          .style("stroke-width", 1)
-          .attr("x1", x_scale(d.Xi))
-          .attr("y1", y_scale(0))
-          .attr("x2", x_scale(d.Xi))
-          .attr("y2", y_scale(d.P_Xi));
-        svg
-          .append("line")
-          .attr("class", "hoverlines")
-          .style("stroke", "grey")
-          .style("stroke-width", 1)
-          .attr("x1", x_scale(xmin))
-          .attr("y1", y_scale(d.P_Xi))
-          .attr("x2", x_scale(d.Xi))
-          .attr("y2", y_scale(d.P_Xi));
-      })
-      .on("mouseout", function (d) {
-        d3.selectAll(".hoverlines").remove();
-        d3.select(this)
-          .transition()
-          .duration(100)
-          .style("opacity", "0.5")
-          .attr("stroke-width", 0);
-      })
-      .on("click", function () {
-        var index = findindex(highlightedPoint[0].Xi);
-        console.log(highlightedPoint[0].Xi, highlightedPoint[0].P_Xi, index);
-        dataPoints_groups[group_i].datapoints.splice(index, 1);
-        console.log(dataPoints_groups[group_i].datapoints);
-        this.remove();
-        calc_param();
-        visualize();
-      });
-
-    // draw mean circles if datapoints more than 1
-    mean_data = [];
-    if (dataPoints_groups[group_i].datapoints.length > 1)
-      mean_data.push(dataPoints_groups[group_i].mean);
-
-    circles[group_i] = svg
-      .append("g")
-      .selectAll("circle")
-      .data(mean_data)
-      .enter()
-      .append("circle")
-      .attr("cy", height)
-      .attr("fill", fillcolors[group_i])
-      .style("opacity", "0.7")
-      .attr("cx", function (d) {
-        return x_scale(d);
-      })
-      .attr("r", 9)
-      .style("stroke", "black")
-      .attr("stroke-width", 0)
-      .on("mouseover", function (d) {
-        d3.select(this)
-          .transition()
-          .duration(100)
-          .style("opacity", "1")
-          .attr("stroke-width", 3);
-      })
-      .on("mouseout", function (d) {
-        d3.select(this)
-          .transition()
-          .duration(100)
-          .style("opacity", "0.7")
-          .attr("stroke-width", 0);
-      })
-      .on("click", function () {
-        this.remove();
-      });
-  }
-  // draw global mean for all datapoints of all groups
-  circle_global_mean = svg
+  svg
     .append("g")
     .selectAll("circle")
-    .data([dataPoints_stats.mean])
+    .data(AllData.DataPoints)
     .enter()
     .append("circle")
+    .html("C")
     .attr("cy", height)
-    .attr("fill", "grey")
-    //.style("opacity", "0.3")
-    .style("stroke", "black")
+    .attr("fill", "red")
+    .style("opacity", "0.5")
     .attr("cx", function (d) {
       return x_scale(d);
     })
-    .attr("r", 9)
-    .style("stroke", "black")
+    .attr("r", 8)
+    .attr("stroke", "red")
     .attr("stroke-width", 0)
     .on("mouseover", function (d) {
+      highlightedPoint = [];
+      highlightedPoint.push({
+        Xi: d.Xi,
+        P_Xi: d.P_Xi,
+      });
+      console.log(d.Xi, d.P_Xi);
       d3.select(this)
         .transition()
         .duration(100)
         .style("opacity", "1")
-        .attr("stroke-width", 3);
+        .attr("stroke-width", 5);
+
+      svg
+        .append("line")
+        .attr("class", "hoverlines")
+        .style("stroke", "grey")
+        .style("stroke-width", 1)
+        .attr("x1", x_scale(d.Xi))
+        .attr("y1", y_scale(0))
+        .attr("x2", x_scale(d.Xi))
+        .attr("y2", y_scale(d.P_Xi));
+      svg
+        .append("line")
+        .attr("class", "hoverlines")
+        .style("stroke", "grey")
+        .style("stroke-width", 1)
+        .attr("x1", x_scale(xmin))
+        .attr("y1", y_scale(d.P_Xi))
+        .attr("x2", x_scale(d.Xi))
+        .attr("y2", y_scale(d.P_Xi));
     })
     .on("mouseout", function (d) {
+      d3.selectAll(".hoverlines").remove();
       d3.select(this)
         .transition()
         .duration(100)
-        .style("opacity", "0.7")
+        .style("opacity", "0.5")
         .attr("stroke-width", 0);
-    })
-    .on("click", function () {
-      this.remove();
     });
+  // .on("click", function () {
+  //   var index = findindex(highlightedPoint[0].Xi);
+  //   console.log(highlightedPoint[0].Xi, highlightedPoint[0].P_Xi, index);
+  //   dataPoints_groups[group_i].datapoints.splice(index, 1);
+  //   console.log(dataPoints_groups[group_i].datapoints);
+  //   this.remove();
+  //   calc_param();
+  //   visualize();
+  // });
+
+  // draw mean circles if datapoints more than 1
+  // mean_data = [];
+  // if (dataPoints_groups[group_i].datapoints.length > 1)
+  //   mean_data.push(dataPoints_groups[group_i].mean);
+
+  // circles[group_i] = svg
+  //   .append("g")
+  //   .selectAll("circle")
+  //   .data(mean_data)
+  //   .enter()
+  //   .append("circle")
+  //   .attr("cy", height)
+  //   .attr("fill", fillcolors[group_i])
+  //   .style("opacity", "0.7")
+  //   .attr("cx", function (d) {
+  //     return x_scale(d);
+  //   })
+  //   .attr("r", 9)
+  //   .style("stroke", "black")
+  //   .attr("stroke-width", 0)
+  //   .on("mouseover", function (d) {
+  //     d3.select(this)
+  //       .transition()
+  //       .duration(100)
+  //       .style("opacity", "1")
+  //       .attr("stroke-width", 3);
+  //   })
+  //   .on("mouseout", function (d) {
+  //     d3.select(this)
+  //       .transition()
+  //       .duration(100)
+  //       .style("opacity", "0.7")
+  //       .attr("stroke-width", 0);
+  //   })
+  //   .on("click", function () {
+  //     this.remove();
+  //   });
+
+  // draw global mean for all datapoints of all groups
+  // circle_global_mean = svg
+  //   .append("g")
+  //   .selectAll("circle")
+  //   .data([dataPoints_stats.mean])
+  //   .enter()
+  //   .append("circle")
+  //   .attr("cy", height)
+  //   .attr("fill", "grey")
+  //   //.style("opacity", "0.3")
+  //   .style("stroke", "black")
+  //   .attr("cx", function (d) {
+  //     return x_scale(d);
+  //   })
+  //   .attr("r", 9)
+  //   .style("stroke", "black")
+  //   .attr("stroke-width", 0)
+  //   .on("mouseover", function (d) {
+  //     d3.select(this)
+  //       .transition()
+  //       .duration(100)
+  //       .style("opacity", "1")
+  //       .attr("stroke-width", 3);
+  //   })
+  //   .on("mouseout", function (d) {
+  //     d3.select(this)
+  //       .transition()
+  //       .duration(100)
+  //       .style("opacity", "0.7")
+  //       .attr("stroke-width", 0);
+  //   })
+  //   .on("click", function () {
+  //     this.remove();
+  //   });
   //console.log('	done plotting datapoints')
 }
 function findindex(xvalue) {
@@ -612,165 +542,11 @@ function findindex(xvalue) {
   }
   return -1;
 }
-function radiobtnchange() {
-  radid = this.id;
-  document.getElementById("rad0").checked = false;
-  document.getElementById("rad1").checked = false;
-  document.getElementById("rad2").checked = false;
-  if (radid == "rad0") {
-    document.getElementById("rad0").checked = true;
-  } else if (radid == "rad1") {
-    document.getElementById("rad1").checked = true;
-  } else if (radid == "rad2") {
-    document.getElementById("rad2").checked = true;
-  }
-  calc_param();
-  visualize();
-}
-
-function plot_tdistribution() {
-  d3.selectAll(".t_line").remove();
-  d3.selectAll("#alphaline").remove();
-  d3.selectAll("#svg2").select("circle").remove();
-  var datapoints_tdist = [];
-
-  if (d3.select("#dropdown").property("value") == 1) {
-    dof = dataPoints_stats.n - 1;
-  } else if (d3.select("#dropdown").property("value") == 2) {
-    dof = dataPoints_stats.n - 2;
-  }
-  for (let x = -4; x <= 4; x += 0.01) {
-    y = jStat.studentt.pdf(x, dof);
-    datapoints_tdist.push({
-      xt: x,
-      yt: y,
-    });
-  }
-  datapoints_tdist.sort(sortByProperty("xt"));
-  //Min xf
-  var min_xt = d3.min(datapoints_tdist, function (d) {
-    return d.xt;
-  });
-
-  //Max xf
-  var max_xt = d3.max(datapoints_tdist, function (d) {
-    return d.xt;
-  });
-
-  //settingup scales
-  x_scale2.domain([-5, 5]).nice;
-  y_scale2 = d3
-    .scaleLinear()
-    .domain([0, 0.5])
-    .range([height / 3, 0]);
-
-  console.log(dataPoints_stats.T);
-  console.log(min_xt);
-  console.log(max_xt);
-  xAxis2.call(d3.axisBottom(x_scale2));
-  yAxis2.call(d3.axisLeft(y_scale2));
-
-  var line2 = d3
-    .line()
-    .x(function (d) {
-      return x_scale2(d.xt);
-    })
-    .y(function (d) {
-      return y_scale2(d.yt);
-    });
-
-  t_dist_line = svg2
-    .append("path")
-    .datum(datapoints_tdist)
-    .attr("class", "t_line")
-    .attr("d", line2)
-    .attr("stroke", "red")
-    .style("opacity", "0.5")
-    .style("fill-opacity", "0");
-
-  t_circle = svg2
-    .append("g")
-    .selectAll("circle")
-    .data([dataPoints_stats.T])
-    .enter()
-    .append("circle")
-    .attr("cy", height2 - 50)
-    .attr("fill", "black")
-    .style("opacity", "0.7")
-    .attr("cx", function (d) {
-      return x_scale2(d);
-    })
-    .attr("r", 5)
-    .style("stroke", "black")
-    .attr("stroke-width", 0)
-    .on("mouseover", function (d) {
-      d3.select(this)
-        .transition()
-        .duration(100)
-        .style("opacity", "1")
-        .attr("stroke-width", 3);
-    })
-    .on("mouseout", function (d) {
-      d3.select(this)
-        .transition()
-        .duration(100)
-        .style("opacity", "0.7")
-        .attr("stroke-width", 0);
-    })
-    .on("click", function () {
-      this.remove();
-    });
-  console.log(t_circle);
-  y2 = jStat.studentt.pdf(dataPoints_stats.Alpha, dataPoints_stats.n - 1);
-  svg2
-    .append("line")
-    .attr("id", "alphaline")
-    .style("stroke", "grey")
-    .style("stroke-width", 2)
-    .attr("x1", x_scale2(dataPoints_stats.Alpha))
-    .attr("y1", y_scale2(0))
-    .attr("x2", x_scale2(dataPoints_stats.Alpha))
-    .attr("y2", y_scale2(y2));
-
-  if (document.getElementById("rad1").checked) {
-    y2 = jStat.studentt.pdf(-dataPoints_stats.Alpha, dataPoints_stats.n - 1);
-    svg2
-      .append("line")
-      .attr("id", "alphaline")
-      .style("stroke", "grey")
-      .style("stroke-width", 2)
-      .attr("x1", x_scale2(-dataPoints_stats.Alpha))
-      .attr("y1", y_scale2(0))
-      .attr("x2", x_scale2(-dataPoints_stats.Alpha))
-      .attr("y2", y_scale2(y2));
-  }
-}
-
 function setup_axis() {
   //updating x & y ranges
   xmin = d3.select("#x_Min").property("value");
   xmax = d3.select("#x_Max").property("value");
-  if (xmin < dataPoints_stats.min - 1 && xmax > dataPoints_stats.max + 1) {
-    x_scale.domain([xmin, xmax]).nice;
-  } else if (
-    xmin < dataPoints_stats.min - 1 &&
-    xmax < dataPoints_stats.max + 1
-  ) {
-    x_scale.domain([xmin, dataPoints_stats.max + 2]).nice;
-  } else if (
-    xmin > dataPoints_stats.min - 1 &&
-    xmax > dataPoints_stats.max + 1
-  ) {
-    x_scale.domain([dataPoints_stats.min - 2, xmax]).nice;
-  } else if (
-    xmin > dataPoints_stats.min - 1 &&
-    xmax < dataPoints_stats.max + 1
-  ) {
-    x_scale.domain([dataPoints_stats.min - 2, dataPoints_stats.max + 2]).nice;
-  } else {
-    x_scale.domain([dataPoints_stats.min - 5, dataPoints_stats.max + 5]).nice;
-  }
-
+  x_scale.domain([xmin, xmax]).nice;
   y_scale = d3.scaleLinear().domain([0, 0.5]).range([height, 0]);
 
   //rendering updates scales
@@ -801,115 +577,19 @@ function mouseover() {
 }
 
 function mouseup() {
-  if (selected_group != -1) {
+  if (selected_group == -1) {
     m = d3.mouse(svg.node());
     Xi = x_scale.invert(m[0]);
-    P_Xi = jStat.normal.pdf(
-      Xi,
-      dataPoints_groups[selected_group].mean,
-      dataPoints_groups[selected_group].stdev
-    ); // mean, sd of the  group in focus
     Xi = round(Xi, 2);
-    P_Xi = round(P_Xi, 2);
-    data_point = {
-      Xi: Xi,
-      P_Xi: P_Xi,
-    };
-    dataPoints_groups[selected_group].datapoints.push(data_point);
-    // console.log(dataPoints_groups[selected_group].datapointsbyclick)
-    calc_param();
+    AllData.DataPoints.push(Xi);
+    console.log(AllData.DataPoints);
+    // initialization(2);
     visualize();
+    // output_table();
+    // plot_distributions(2);
+    // setup_axis();
   }
 }
-
-function display_anova_results() {
-  critical_value = " Critical Value: " + round(dataPoints_stats.Alpha, 4);
-  p_value =
-    "P-Value ( μ = x̄) : " + round(1 - dataPoints_stats.T_P_Value, 6) + "<br>";
-  alpha_value = 1 - d3.select("#alphavalue").property("value");
-  if (document.getElementById("rad1").checked) {
-    p_value += "P-Value ( μ != x̄) : " + round(dataPoints_stats.T_P_Value, 6);
-    critical_value =
-      " Critical Value: +/- " + Math.abs(round(dataPoints_stats.Alpha, 4));
-    alpha_value /= 2;
-  } else if (document.getElementById("rad0").checked) {
-    p_value += "P-Value ( μ < x̄) : " + round(dataPoints_stats.T_P_Value, 6);
-  } else {
-    p_value += "P-Value ( μ > x̄) : " + round(dataPoints_stats.T_P_Value, 6);
-  }
-  gs = "greater than ";
-  acpt = " is accepted.";
-  if (round(dataPoints_stats.T_P_Value, 6) < alpha_value) {
-    gs = "smaller than ";
-    acpt = " cannot be accepted.";
-  }
-  decision =
-    "The likelihood of observing T-Statistic<br>as extreme as " +
-    round(dataPoints_stats.T, 4) +
-    " due to random chance<br>" +
-    "is " +
-    round(dataPoints_stats.T_P_Value, 6) +
-    "<br>which is " +
-    gs +
-    "the alpha " +
-    round(alpha_value, 4) +
-    "<br>Therefore, HO " +
-    acpt;
-
-  if (d3.select("#dropdown").property("value") == 1) {
-    anova_text
-      .html(
-        "<p class=anovaresults>" +
-          "	T-Statistic : " +
-          round(dataPoints_stats.T, 4) +
-          "<br>" +
-          p_value +
-          "<br>" +
-          critical_value +
-          "<br>" +
-          "μ : " +
-          d3.select("#mean0").property("value") +
-          " x̄ : " +
-          round(dataPoints_groups[0].mean, 4) +
-          " sd: " +
-          round(dataPoints_groups[0].sd, 4) +
-          "<br>" +
-          decision +
-          "</p>"
-      )
-      .attr("x", 5)
-      .attr("y", 10);
-  } else if (d3.select("#dropdown").property("value") == 2) {
-    anova_text
-      .html(
-        "<p class=anovaresults>" +
-          "	T-Statistic : " +
-          round(dataPoints_stats.T, 4) +
-          "<br>" +
-          p_value +
-          "<br>" +
-          critical_value +
-          "<br>" +
-          "x̄ 1: " +
-          round(dataPoints_groups[0].mean, 6) +
-          "<br>" +
-          "x̄ 2: " +
-          round(dataPoints_groups[1].mean, 6) +
-          "<br>" +
-          "sd 1: " +
-          round(dataPoints_groups[0].sd, 6) +
-          "<br>" +
-          "sd 2: " +
-          round(dataPoints_groups[1].sd, 6) +
-          decision +
-          "<br>" +
-          "</p>"
-      )
-      .attr("x", 5)
-      .attr("y", 10);
-  }
-}
-
 function ConvertToCSV(objArray) {
   var array = typeof objArray != "object" ? JSON.parse(objArray) : objArray;
   var all_data = "";
@@ -1015,148 +695,100 @@ function calc_param() {
   }
   dataPoints_stats.df1 = dataPoints_stats.k - 1;
   dataPoints_stats.df2 = dataPoints_stats.n - dataPoints_stats.k;
-  // cdf returns the probability that a number randomly selected from the central F distribution
-  // with df1 and df2 will be less than x
-  // dataPoints_stats.F_P_Value = 1 - jStat.centralF.cdf(x = dataPoints_stats.F, df1 = dataPoints_stats.df1, df2 = dataPoints_stats.df2);
-  // dataPoints_stats.T_P_Value =
-  //   1 -
-  //   jStat.studentt.cdf(
-  //     (x = dataPoints_stats.T),
-  //     (dof = dataPoints_stats.n - 1)
-  //   );
-  // console.log("p from cdf ", dataPoints_stats.T_P_Value);
-  if (document.getElementById("rad0").checked) {
-    dataPoints_stats.T_P_Value =
-      1 -
-      jStat.ttest(
-        (tscore = dataPoints_stats.T),
-        (n = dataPoints_stats.n),
-        (sides = 1)
-      );
-    dataPoints_stats.Alpha =
-      -1 *
-      jStat.studentt.inv(
-        d3.select("#alphavalue").property("value"),
-        dataPoints_stats.n - 1
-      );
-  } else if (document.getElementById("rad1").checked) {
-    dataPoints_stats.T_P_Value = jStat.ttest(
-      (tscore = dataPoints_stats.T),
-      (n = dataPoints_stats.n),
-      (sides = 2)
-    );
-    dataPoints_stats.Alpha = jStat.studentt.inv(
-      (1 - d3.select("#alphavalue").property("value")) / 2,
-      dataPoints_stats.n - 1
-    );
-  } else if (document.getElementById("rad2").checked) {
-    dataPoints_stats.T_P_Value = jStat.ttest(
-      (tscore = dataPoints_stats.T),
-      (n = dataPoints_stats.n),
-      (sides = 1)
-    );
-    dataPoints_stats.Alpha = jStat.studentt.inv(
-      d3.select("#alphavalue").property("value"),
-      dataPoints_stats.n - 1
-    );
-  }
-  /*
-  if (document.getElementById("rad1").checked) {
-    dataPoints_stats.Alpha = jStat.studentt.inv(
-      (1 - d3.select("#alphavalue").property("value")) / 2,
-      dataPoints_stats.n - 1
-    );
-  } else {
-    dataPoints_stats.Alpha = jStat.studentt.inv(
-      d3.select("#alphavalue").property("value"),
-      dataPoints_stats.n - 1
-    );
-  }
-  console.log("A", dataPoints_stats.Alpha);  
-  */
-  // console.log("p from ttest", dataPoints_stats.T_P_Value);
-  display_anova_results();
-  //console.log(dataPoints_stats.min)
 }
 
 function initialization(K) {
-  AllData.DataPoints = all_data;
+  // AllData.DataPoints = [1, 2, 3, 2, 1, 6, 4, 4, 5, 7];
   AllData.Priors = [];
   AllData.mu_estimates = [];
   AllData.cov_estimates = [];
   AllData.clusters = {};
+  AllData.clusters.likelihood = [];
+  AllData.clusters.marginal = [];
+  AllData.clusters.jointprob = [];
+  AllData.clusters.posterior = [];
+  index1 = Math.floor(Math.random() * AllData.DataPoints.length);
+  index2 = Math.floor(Math.random() * AllData.DataPoints.length);
+  console.log(index1, index2);
+  AllData.mu_estimates.push(AllData.DataPoints[index1]);
+  AllData.mu_estimates.push(AllData.DataPoints[index2]);
   for (i = 0; i < K; i++) {
     AllData.Priors.push(1 / K);
-    AllData.mu_estimates.push(
-      AllData.DataPoints[Math.floor(Math.random() * AllData.DataPoints.length)]
-    );
+    //AllData.mu_estimates.push(
+    //  AllData.DataPoints[Math.floor(Math.random() * AllData.DataPoints.length)]
+    //);
+    console.log(AllData.mu_estimates, AllData.DataPoints.length);
+    //AllData.cov_estimates.push(
+    //    AllData.DataPoints.map((num) =>
+    //     Math.pow(num - AllData.mu_estimates[i], 2)
+    //   ).reduce((total, num) => total + num) / (AllData.DataPoints.length - 1));
     AllData.cov_estimates.push(
-      round(
-        AllData.DataPoints.map((x) =>
-          Math.pow(x - AllData.mu_estimates[i], 2)
-        ).reduce((a, b) => a + b) /
-          (n - 1),
-        2
-      )
+      AllData.DataPoints.map((num) =>
+        Math.pow(num - AllData.mu_estimates[i], 2)
+      ).reduce((total, num) => total + num) / AllData.DataPoints.length
     );
+    AllData.clusters.likelihood.push([]);
+    AllData.clusters.marginal = [];
+    AllData.clusters.jointprob.push([]);
+    AllData.clusters.posterior.push([]);
   }
+  // for (iteration = 1; iteration < 10; iteration++) {
+  //   console.log(
+  //     "iteration",
+  //     iteration,
+  //     "mu",
+  //     AllData.mu_estimates,
+  //     "cov",
+  //     AllData.cov_estimates
+  //   );
+  //   expectation(2);
+  //   maximization(2);
+  // }
 }
 
 function expectation(K) {
-  AllData.clusters.likelihood_Px_k1 = [];
-  AllData.clusters.likelihood_Px_k2 = [];
-  AllData.clusters.marginal = [];
-  AllData.clusters.joints_k1 = [];
-  AllData.clusters.joints_k2 = [];
-  AllData.clusters.posterior_k1 = [];
-  AllData.clusters.posterior_k2 = [];
   for (i = 0; i < K; i++) {
-    tempary = [];
-    for (j = 0; j < AllData.DataPoints.length; j++) {
-      tempary.push(
-        round(
-          jStat.normal.pdf(
-            AllData.DataPoints[j],
-            AllData.mu_estimates[i],
-            AllData.cov_estimates[i]
-          ),
-          2
-        )
-      );
-    }
-    if (i == 0) {
-      AllData.clusters.likelihood_Px_k1 = tempary;
-    } else if (i == 1) {
-      AllData.clusters.likelihood_Px_k2 = tempary;
-    }
-  }
-  for (i = 0; i < AllData.clusters.likelihood_Px_k1.length; i++) {
-    AllData.clusters.marginal.push(
+    AllData.clusters.likelihood[i] = AllData.DataPoints.map((d) =>
       round(
-        AllData.clusters.likelihood_Px_k1[i] +
-          AllData.clusters.likelihood_Px_k2[i],
-        2
+        jStat.normal.pdf(
+          d,
+          AllData.mu_estimates[i],
+          Math.sqrt(AllData.cov_estimates[i])
+        ),
+        3
       )
     );
+    AllData.clusters.jointprob[i] = AllData.clusters.likelihood[i].map((x) =>
+      round(x * AllData.Priors[i], 3)
+    );
   }
+  AllData.clusters.marginal = AllData.clusters.jointprob.reduce((row1, row2) =>
+    row1.map((num, index) => round(num + row2[index], 3))
+  );
   for (i = 0; i < K; i++) {
-    tempary = [];
-    tempary2 = [];
-    for (j = 0; j < AllData.DataPoints.length; j++) {
-      tempary.push(AllData.clusters.marginal[j] * AllData.Priors[i]);
-      tempary2.push(tempary[j] / AllData.clusters.marginal[j]);
-    }
-    if (i == 0) {
-      AllData.clusters.joints_k1 = tempary;
-      AllData.clusters.posterior_k1=tempary2;
-    } else if (i == 1) {
-      AllData.clusters.joints_k2 = tempary;
-      AllData.clusters.posterior_k2=tempary2;
-    }
+    AllData.clusters.posterior[i] = AllData.clusters.jointprob[i].map(
+      (num, index) => num / AllData.clusters.marginal[index]
+    );
   }
-
   console.log(AllData);
 }
+function maximization(K) {
+  mu = [];
+  for (i = 0; i < K; i++) {
+    total_posterior = AllData.clusters.posterior[i].reduce(
+      (total, num) => total + num
+    );
+    weighted_points = AllData.DataPoints.map(
+      (num, index) => num * AllData.clusters.posterior[i][index]
+    );
+    AllData.mu_estimates[i] =
+      weighted_points.reduce((total, num) => total + num) / total_posterior;
 
-initialization(2);
-expectation(2);
+    // calc covariance w.r.t. weighted points
+    AllData.cov_estimates[i] =
+      weighted_points
+        .map((num) => Math.pow(num - AllData.mu_estimates[i], 2))
+        .reduce((total, num) => total + num) /
+      (AllData.DataPoints.length - 1);
+  }
+}

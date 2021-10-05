@@ -62,8 +62,9 @@ body {
 .inputbox_xrange_labels,
 .xrange_labels,
 .labels,
-.alphadiv {
-  margin-top: 30px;
+.alphadiv,
+.noofgroupsdiv {
+  margin-top: 15px;
   display: flex;
   flex-direction: row;
   justify-content: space-evenly;
@@ -103,7 +104,9 @@ input {
   height: auto;
 }
 #download-button,
-#sample-button {
+#sample-button,
+#iterate-button,
+#initialize-button {
   width: 100px;
 }
 #svg1 {
@@ -121,7 +124,7 @@ input:focus {
   color: white;
 }
 .radbtncontainer {
-  margin-top: 20px;
+  margin-top: 10px;
   display: flex;
   justify-content: space-around;
 }
@@ -133,4 +136,27 @@ input[type="radio"] {
 }
 g > text {
   font-size: 1.5em;
+}
+.outputbox {
+  margin-top: 15px;
+  width: 100%;
+}
+.outputboxheader {
+  width: 100%;
+}
+.outputtable {
+  width: 100%;
+}
+.tabs {
+  width: 33.33%;
+  height: 20px;
+}
+tr {
+  width: 100%;
+  display: flex;
+  justify-content: space-around;
+}
+.outputtablediv {
+  height: 150px;
+  overflow-y: scroll;
 }
