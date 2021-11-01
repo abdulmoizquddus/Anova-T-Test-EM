@@ -17,10 +17,14 @@ height2 = 200;
 likelihoodbtnselected = true;
 marginalbtnselected = false;
 jointsbtnselected = false;
+posteriorsbtnselected = false;
 
 var highlightedPoint = [];
 var AllData = {};
 AllData.DataPoints = [];
+AllData.mu_estimates = [];
+
+Dist_datapoints = [];
 //
 var svg = d3
   .select(".box")
@@ -138,6 +142,21 @@ function setupControlPanel(noOfGroups) {
   // Group parametets section
   var groups = new Array(noOfGroups).fill(0);
   // intialize view components
+  mu_inputcheck = inputSec.append("div").attr("class", "inputbox");
+  mu_inputcheck
+    .append("label")
+    .attr("for", "mu_inputcheck")
+    .text("Select Estimated Means");
+  mu_inputcheck
+    .append("input")
+    .attr("type", "checkbox")
+    .attr("id", "mu_inputcheck");
+  // dropdown_div.append("label").attr("for", "mu1dropdown").text("mu_1");
+  // dropdown_div.append("select").attr("id", "mu1dropdown");
+
+  // dropdown_div.append("label").attr("for", "mu2dropdown").text("mu_2");
+  // dropdown_div.append("select").attr("id", "mu2dropdown");
+
   initialize_btn_div = inputSec.append("div").attr("class", "inputbox");
   initialize_btn_div
     .append("input")
@@ -195,6 +214,7 @@ function setupControlPanel(noOfGroups) {
       likelihoodbtnselected = true;
       marginalbtnselected = false;
       jointsbtnselected = false;
+      posteriorsbtnselected = false;
       output_table();
     });
   outputboxheader
@@ -206,6 +226,7 @@ function setupControlPanel(noOfGroups) {
       likelihoodbtnselected = false;
       marginalbtnselected = true;
       jointsbtnselected = false;
+      posteriorsbtnselected = false;
       output_table();
     });
   outputboxheader
@@ -217,6 +238,19 @@ function setupControlPanel(noOfGroups) {
       likelihoodbtnselected = false;
       marginalbtnselected = false;
       jointsbtnselected = true;
+      posteriorsbtnselected = false;
+      output_table();
+    });
+  outputboxheader
+    .append("input")
+    .attr("type", "button")
+    .attr("class", "tabs")
+    .attr("value", "Posteriors")
+    .on("click", function () {
+      likelihoodbtnselected = false;
+      marginalbtnselected = false;
+      jointsbtnselected = false;
+      posteriorsbtnselected = true;
       output_table();
     });
   // initialize model: arrays in dataPoints_Groups
@@ -263,6 +297,8 @@ function plot_distributions(K) {
     .y(function (d) {
       return y_scale(d.P_Xi);
     });
+
+  Dist_datapoints = [];
   // console.log("dg",dataPoints_groups);
   //console.log("ds", dataPoints_stats)
   for (let group_i = 0; group_i < K; group_i++) {
@@ -278,6 +314,7 @@ function plot_distributions(K) {
     // console.log("left",left);
     // console.log("right",right);
     for (let Xi = mean - 4 * sd; Xi < mean + 4 * sd; Xi += step_size) {
+      Dist_datapoints.push(Xi);
       P_Xi = jStat.normal.pdf(Xi, mean, sd);
       datapoints.push({ Xi: Xi, P_Xi: P_Xi });
     }
@@ -317,6 +354,8 @@ function output_table() {
     tr = ["Index", "Marginal"];
   } else if (jointsbtnselected) {
     tr = ["Index", "Joint_K1", "Joint_K2"];
+  } else if (posteriorsbtnselected) {
+    tr = ["Groups", "Posteriors_K1", "Posteriors_K1"];
   }
   table
     .append("tr")
@@ -374,6 +413,22 @@ function output_table() {
           return d;
         });
     }
+  } else if (posteriorsbtnselected) {
+    for (let row = 0; row < AllData.clusters.posterior[0].length; row++) {
+      temp_ary = [];
+      temp_ary.push(row);
+      temp_ary.push(AllData.clusters.posterior[0][row]);
+      temp_ary.push(AllData.clusters.posterior[1][row]);
+      table
+        .append("tr")
+        .selectAll("td")
+        .data(temp_ary)
+        .enter()
+        .append("td")
+        .text(function (d) {
+          return d;
+        });
+    }
   }
 }
 
@@ -390,13 +445,13 @@ function plot_datapoints() {
   //console.log('	plotting datapoints', dataPoints_groups)
   //setup_axis()
   svg.selectAll("circle").remove();
+  svg.selectAll(".circletext").remove();
   svg
     .append("g")
     .selectAll("circle")
     .data(AllData.DataPoints)
     .enter()
     .append("circle")
-    .html("C")
     .attr("cy", height)
     .attr("fill", "red")
     .style("opacity", "0.5")
@@ -404,39 +459,38 @@ function plot_datapoints() {
       return x_scale(d);
     })
     .attr("r", 8)
-    .attr("stroke", "red")
-    .attr("stroke-width", 0)
+    .attr("stroke", "black")
+    .attr("stroke-width", 1)
     .on("mouseover", function (d) {
       highlightedPoint = [];
-      highlightedPoint.push({
-        Xi: d.Xi,
-        P_Xi: d.P_Xi,
-      });
-      console.log(d.Xi, d.P_Xi);
       d3.select(this)
         .transition()
         .duration(100)
         .style("opacity", "1")
         .attr("stroke-width", 5);
 
-      svg
-        .append("line")
-        .attr("class", "hoverlines")
-        .style("stroke", "grey")
-        .style("stroke-width", 1)
-        .attr("x1", x_scale(d.Xi))
-        .attr("y1", y_scale(0))
-        .attr("x2", x_scale(d.Xi))
-        .attr("y2", y_scale(d.P_Xi));
-      svg
-        .append("line")
-        .attr("class", "hoverlines")
-        .style("stroke", "grey")
-        .style("stroke-width", 1)
-        .attr("x1", x_scale(xmin))
-        .attr("y1", y_scale(d.P_Xi))
-        .attr("x2", x_scale(d.Xi))
-        .attr("y2", y_scale(d.P_Xi));
+      // svg
+      //   .append("line")
+      //   .attr("class", "hoverlines")
+      //   .style("stroke", "grey")
+      //   .style("stroke-width", 1)
+      //   .attr("x1", x_scale(d))
+      //   .attr("y1", y_scale(0))
+      //   .attr("x2", x_scale(d))
+      //   .attr("y2", function (d) {
+      //     return y_scale(
+      //       AllData.clusters.likelihood[0][AllData.DataPoints.indexOf(d)]
+      //     );
+      //   });
+      // svg
+      //   .append("line")
+      //   .attr("class", "hoverlines")
+      //   .style("stroke", "grey")
+      //   .style("stroke-width", 1)
+      //   .attr("x1", x_scale(xmin))
+      //   .attr("y1", y_scale(d.P_Xi))
+      //   .attr("x2", x_scale(d.Xi))
+      //   .attr("y2", y_scale(d.P_Xi));
     })
     .on("mouseout", function (d) {
       d3.selectAll(".hoverlines").remove();
@@ -445,7 +499,34 @@ function plot_datapoints() {
         .duration(100)
         .style("opacity", "0.5")
         .attr("stroke-width", 0);
+    })
+    .on("mouseup", function (d) {
+      if (document.getElementById("mu_inputcheck").checked) {
+        if (AllData.mu_estimates.length >= 2) {
+          AllData.mu_estimates.pop();
+          AllData.mu_estimates[0] = d;
+        } else {
+          AllData.mu_estimates.push(d);
+        }
+      }
     });
+
+  svg
+    .append("g")
+    .selectAll("text")
+    .data(AllData.DataPoints)
+    .enter()
+    .append("text")
+    .attr("class", "circletext")
+    .attr("dx", function (d) {
+      return x_scale(d) - 3.5;
+    })
+    .attr("dy", height - 9)
+    .text(function (d) {
+      return AllData.DataPoints.indexOf(d);
+    })
+
+    .attr("color", "black");
   // .on("click", function () {
   //   var index = findindex(highlightedPoint[0].Xi);
   //   console.log(highlightedPoint[0].Xi, highlightedPoint[0].P_Xi, index);
@@ -546,7 +627,25 @@ function setup_axis() {
   //updating x & y ranges
   xmin = d3.select("#x_Min").property("value");
   xmax = d3.select("#x_Max").property("value");
-  x_scale.domain([xmin, xmax]).nice;
+  if (Dist_datapoints.length != 0) {
+    datamin = d3.min(Dist_datapoints);
+    datamax = d3.max(Dist_datapoints);
+  } else {
+    datamin = 0;
+    datamax = 0;
+  }
+
+  if (xmin < datamin - 1 && xmax > datamax + 1) {
+    x_scale.domain([xmin, xmax]).nice;
+  } else if (xmin < datamin - 1 && xmax < datamax + 1) {
+    x_scale.domain([xmin, datamax + 2]).nice;
+  } else if (xmin > datamin - 1 && xmax > datamax + 1) {
+    x_scale.domain([datamin - 2, xmax]).nice;
+  } else if (xmin > datamin - 1 && xmax < datamax + 1) {
+    x_scale.domain([datamin - 2, datamax + 2]).nice;
+  } else {
+    x_scale.domain([datamin - 5, datamax + 5]).nice;
+  }
   y_scale = d3.scaleLinear().domain([0, 0.5]).range([height, 0]);
 
   //rendering updates scales
@@ -577,7 +676,7 @@ function mouseover() {
 }
 
 function mouseup() {
-  if (selected_group == -1) {
+  if (!document.getElementById("mu_inputcheck").checked) {
     m = d3.mouse(svg.node());
     Xi = x_scale.invert(m[0]);
     Xi = round(Xi, 2);
@@ -700,18 +799,20 @@ function calc_param() {
 function initialization(K) {
   // AllData.DataPoints = [1, 2, 3, 2, 1, 6, 4, 4, 5, 7];
   AllData.Priors = [];
-  AllData.mu_estimates = [];
   AllData.cov_estimates = [];
   AllData.clusters = {};
   AllData.clusters.likelihood = [];
   AllData.clusters.marginal = [];
   AllData.clusters.jointprob = [];
   AllData.clusters.posterior = [];
-  index1 = Math.floor(Math.random() * AllData.DataPoints.length);
-  index2 = Math.floor(Math.random() * AllData.DataPoints.length);
-  console.log(index1, index2);
-  AllData.mu_estimates.push(AllData.DataPoints[index1]);
-  AllData.mu_estimates.push(AllData.DataPoints[index2]);
+  // index1 = Math.floor(Math.random() * AllData.DataPoints.length);
+  // index2 = Math.floor(Math.random() * AllData.DataPoints.length);
+  // console.log(index1, index2);
+  // AllData.mu_estimates.push(AllData.DataPoints[index1]);
+  // AllData.mu_estimates.push(AllData.DataPoints[index2]);
+  mu =
+    AllData.DataPoints.reduce((total, num) => total + num) /
+    AllData.DataPoints.length;
   for (i = 0; i < K; i++) {
     AllData.Priors.push(1 / K);
     //AllData.mu_estimates.push(
@@ -723,9 +824,9 @@ function initialization(K) {
     //     Math.pow(num - AllData.mu_estimates[i], 2)
     //   ).reduce((total, num) => total + num) / (AllData.DataPoints.length - 1));
     AllData.cov_estimates.push(
-      AllData.DataPoints.map((num) =>
-        Math.pow(num - AllData.mu_estimates[i], 2)
-      ).reduce((total, num) => total + num) / AllData.DataPoints.length
+      AllData.DataPoints.map((num) => Math.pow(num - mu, 2)).reduce(
+        (total, num) => total + num
+      ) / AllData.DataPoints.length
     );
     AllData.clusters.likelihood.push([]);
     AllData.clusters.marginal = [];
@@ -767,7 +868,7 @@ function expectation(K) {
   );
   for (i = 0; i < K; i++) {
     AllData.clusters.posterior[i] = AllData.clusters.jointprob[i].map(
-      (num, index) => num / AllData.clusters.marginal[index]
+      (num, index) => round(num / AllData.clusters.marginal[index], 3)
     );
   }
   console.log(AllData);
@@ -792,5 +893,3 @@ function maximization(K) {
       (AllData.DataPoints.length - 1);
   }
 }
-
-//randomw2

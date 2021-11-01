@@ -148,7 +148,7 @@ g > text {
   width: 100%;
 }
 .tabs {
-  width: 33.33%;
+  width: 25%;
   height: 20px;
 }
 tr {
@@ -159,4 +159,12 @@ tr {
 .outputtablediv {
   height: 150px;
   overflow-y: scroll;
+}
+.circletext {
+  font-size: 12px;
+  z-index: -10;
+  color: red;
+}
+circle {
+  z-index: 5;
 }
