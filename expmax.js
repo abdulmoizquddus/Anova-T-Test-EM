@@ -77,7 +77,7 @@ var dropDown = dropDownbox
   .append("select")
   .attr("name", "name-list")
   .attr("id", "dropdown");
-var dropDownOptions = [0, 1, 2];
+var dropDownOptions = [2, 3, 4, 5, 6];
 var options = dropDown
   .selectAll("option")
   .data(dropDownOptions)
@@ -152,8 +152,6 @@ function setupControlPanel(noOfGroups) {
     .attr("value", "Expectation")
     .on("click", function () {
       expectation(AllData.k);
-      maximization(AllData.k);
-      visualize();
       output_table();
     });
   maximization_btn_div = inputSec.append("div").attr("class", "inputbox");
@@ -163,9 +161,9 @@ function setupControlPanel(noOfGroups) {
     .attr("id", "maximization-button")
     .attr("value", "Maximization")
     .on("click", function () {
-      expectation(AllData.k);
       maximization(AllData.k);
       visualize();
+      plot_distributions(AllData.k);
       output_table();
     });
 
@@ -223,16 +221,14 @@ function setupControlPanel(noOfGroups) {
     });
   // initialize model: arrays in dataPoints_Groups
   // calc_param();
-  var mue_dropDownboxes = inputSec
-    .append("div")
-    .attr("class", "mue_dropdown_div");
-  mue_dropDownboxes.append("label").attr("for", "mue1").text("mu 1");
-  var dropDown1 = mue_dropDownboxes
+  var dropDowns = inputSec.append("div").attr("class", "mue_dropdown_div");
+  dropDowns.append("label").attr("for", "mues").text("Mues");
+  var dropDown1 = dropDowns
     .append("select")
     .attr("name", "name-list")
-    .attr("id", "mu1_dropdown");
-  var dropDownOptions = [0, 1, 2];
-  var options = dropDown1
+    .attr("id", "mues_dropdown");
+  var dropDownOptions = [2];
+  dropDown1
     .selectAll("option")
     .data(dropDownOptions)
     .enter()
@@ -241,11 +237,11 @@ function setupControlPanel(noOfGroups) {
       return d;
     });
 
-  mue_dropDownboxes.append("label").attr("for", "mue1").text("mu 2");
-  var dropDown2 = mue_dropDownboxes
+  dropDowns.append("label").attr("for", "mue1").text("Covariances");
+  var dropDown2 = dropDowns
     .append("select")
     .attr("name", "name-list")
-    .attr("id", "mu2_dropdown");
+    .attr("id", "cov_dropdown");
   var dropDownOptions = [0, 1, 2];
   var options = dropDown2
     .selectAll("option")
