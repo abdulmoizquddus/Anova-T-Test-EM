@@ -96,6 +96,10 @@ input {
   height: 23px;
   margin-left: 40px;
 }
+#mues_dropdown,
+#cov_dropdown {
+  width: 50px;
+}
 .labels {
   list-style: none;
 }

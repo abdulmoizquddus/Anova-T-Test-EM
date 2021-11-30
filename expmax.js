@@ -24,7 +24,8 @@ var AllData = {};
 AllData.DataPoints = [];
 AllData.mu_estimates = [];
 AllData.k = 2;
-
+var dropDown1;
+var dropDown2;
 Dist_datapoints = [];
 //
 var svg = d3
@@ -162,8 +163,8 @@ function setupControlPanel(noOfGroups) {
     .attr("value", "Maximization")
     .on("click", function () {
       maximization(AllData.k);
-      visualize();
       plot_distributions(AllData.k);
+      visualize();
       output_table();
     });
 
@@ -223,34 +224,16 @@ function setupControlPanel(noOfGroups) {
   // calc_param();
   var dropDowns = inputSec.append("div").attr("class", "mue_dropdown_div");
   dropDowns.append("label").attr("for", "mues").text("Mues");
-  var dropDown1 = dropDowns
+  dropDown1 = dropDowns
     .append("select")
     .attr("name", "name-list")
     .attr("id", "mues_dropdown");
-  var dropDownOptions = [2];
-  dropDown1
-    .selectAll("option")
-    .data(dropDownOptions)
-    .enter()
-    .append("option")
-    .text(function (d) {
-      return d;
-    });
 
   dropDowns.append("label").attr("for", "mue1").text("Covariances");
-  var dropDown2 = dropDowns
+  dropDown2 = dropDowns
     .append("select")
     .attr("name", "name-list")
     .attr("id", "cov_dropdown");
-  var dropDownOptions = [0, 1, 2];
-  var options = dropDown2
-    .selectAll("option")
-    .data(dropDownOptions)
-    .enter()
-    .append("option")
-    .text(function (d) {
-      return d;
-    });
 
   download_btn_div = inputSec.append("div").attr("class", "inputbox");
   download_btn_div
@@ -543,7 +526,7 @@ function plot_datapoints() {
     })
     .on("mouseup", function (d) {
       if (document.getElementById("mu_inputcheck").checked) {
-        if (AllData.mu_estimates.length >= 2) {
+        if (AllData.mu_estimates.length >= AllData.k) {
           AllData.mu_estimates.pop();
           AllData.mu_estimates[0] = d;
         } else {
@@ -722,7 +705,7 @@ function mouseup() {
     Xi = x_scale.invert(m[0]);
     Xi = round(Xi, 2);
     AllData.DataPoints.push(Xi);
-    console.log(AllData.DataPoints);
+    // console.log(AllData.DataPoints);
     // initialization(2);
     visualize();
     // output_table();
@@ -874,6 +857,25 @@ function initialization(K) {
     AllData.clusters.marginal = [];
     AllData.clusters.jointprob.push([]);
     AllData.clusters.posterior.push([]);
+    console.log(AllData.mu_estimates, AllData.cov_estimates);
+    var dropDownOptions = AllData.mu_estimates;
+    dropDown1
+      .selectAll("option")
+      .data(dropDownOptions)
+      .enter()
+      .append("option")
+      .text(function (d) {
+        return d;
+      });
+    var dropDownOptions = AllData.cov_estimates;
+    dropDown2
+      .selectAll("option")
+      .data(dropDownOptions)
+      .enter()
+      .append("option")
+      .text(function (d) {
+        return d;
+      });
   }
   console.log(
     "Initial Parameters",
