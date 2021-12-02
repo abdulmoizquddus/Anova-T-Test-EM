@@ -27,7 +27,6 @@ AllData.k = 2;
 var dropDown1;
 var dropDown2;
 Dist_datapoints = [];
-var iterations=0;
 //
 var svg = d3
   .select(".box")
@@ -141,14 +140,12 @@ function setupControlPanel(noOfGroups) {
     .on("click", function () {
       initialization(AllData.k);
       visualize();
-      output_table1_header();
-      output_table1();
-      output_table2();
+      output_table();
       plot_distributions(AllData.k);
       setup_axis();
     });
 
-  expectation_btn_div = inputSec.append("div").attr("class", "inputbox1");
+  expectation_btn_div = inputSec.append("div").attr("class", "inputbox");
   expectation_btn_div
     .append("input")
     .attr("type", "button")
@@ -156,9 +153,10 @@ function setupControlPanel(noOfGroups) {
     .attr("value", "Expectation")
     .on("click", function () {
       expectation(AllData.k);
-      output_table2();
+      output_table();
     });
-    expectation_btn_div
+  maximization_btn_div = inputSec.append("div").attr("class", "inputbox");
+  maximization_btn_div
     .append("input")
     .attr("type", "button")
     .attr("id", "maximization-button")
@@ -167,19 +165,13 @@ function setupControlPanel(noOfGroups) {
       maximization(AllData.k);
       plot_distributions(AllData.k);
       visualize();
-      output_table1();
-      output_table2();
+      output_table();
     });
 
-  
-  
-  output_box1 = inputSec.append("div").attr("class", "outputbox1");
-  table_div1 = output_box1.append("div").attr("class", "outputtablediv1");
-  table1 = table_div1.append("table").attr("class", "outputtable1");
-  output_box2 = inputSec.append("div").attr("class", "outputbox2");
-  outputboxheader = output_box2.append("div").attr("class", "outputboxheader");
-  table_div2 = output_box2.append("div").attr("class", "outputtablediv2");
-  table2 = table_div2.append("table").attr("class", "outputtable2");
+  output_box = inputSec.append("div").attr("class", "outputbox");
+  outputboxheader = output_box.append("div").attr("class", "outputboxheader");
+  table_div = output_box.append("div").attr("class", "outputtablediv");
+  table = table_div.append("table").attr("class", "outputtable");
   outputboxheader
     .append("input")
     .attr("type", "button")
@@ -190,7 +182,7 @@ function setupControlPanel(noOfGroups) {
       marginalbtnselected = false;
       jointsbtnselected = false;
       posteriorsbtnselected = false;
-      output_table2();
+      output_table();
     });
   outputboxheader
     .append("input")
@@ -202,7 +194,7 @@ function setupControlPanel(noOfGroups) {
       marginalbtnselected = false;
       jointsbtnselected = true;
       posteriorsbtnselected = false;
-      output_table2();
+      output_table();
     });
   outputboxheader
     .append("input")
@@ -214,7 +206,7 @@ function setupControlPanel(noOfGroups) {
       marginalbtnselected = true;
       jointsbtnselected = false;
       posteriorsbtnselected = false;
-      output_table2();
+      output_table();
     });
   outputboxheader
     .append("input")
@@ -226,35 +218,39 @@ function setupControlPanel(noOfGroups) {
       marginalbtnselected = false;
       jointsbtnselected = false;
       posteriorsbtnselected = true;
-      output_table2();
+      output_table();
     });
   // initialize model: arrays in dataPoints_Groups
+  // calc_param();
+  var dropDowns = inputSec.append("div").attr("class", "mue_dropdown_div");
+  dropDowns.append("label").attr("for", "mues").text("Mues");
+  dropDown1 = dropDowns
+    .append("select")
+    .attr("name", "name-list")
+    .attr("id", "mues_dropdown");
 
-  export_reset_btn_div = inputSec.append("div").attr("class", "inputbox");
-  export_reset_btn_div
+  dropDowns.append("label").attr("for", "mue1").text("Covariances");
+  dropDown2 = dropDowns
+    .append("select")
+    .attr("name", "name-list")
+    .attr("id", "cov_dropdown");
+
+  download_btn_div = inputSec.append("div").attr("class", "inputbox");
+  download_btn_div
     .append("input")
     .attr("type", "button")
     .attr("id", "download-button")
-    .attr("value", "Export Data")
-    .on("click", function () {
-      const a = document.createElement("a");
-      const file = new Blob([ConvertToCSV(dataPoints_groups)], {
-        type: "text/plain",
-      });
-      a.href = URL.createObjectURL(file);
-      a.download = "data.csv";
-      a.click();
-    });
+    .attr("value", "Export Data");
 
-
-    export_reset_btn_div
-    .append("input")
-    .attr("type", "button")
-    .attr("id", "reset-button")
-    .attr("value", "Reset")
-    .on("click", function () {
-      window.location.reload();
+  d3.select("#download-button").on("click", function () {
+    const a = document.createElement("a");
+    const file = new Blob([ConvertToCSV(dataPoints_groups)], {
+      type: "text/plain",
     });
+    a.href = URL.createObjectURL(file);
+    a.download = "data.csv";
+    a.click();
+  });
   // X-axis range section
   var xrange_labels = inputSec.append("div").attr("class", "xrange_labels");
   xrange_labels
@@ -373,65 +369,19 @@ function sample_from_dist(mean, sd, points) {
   }
   return datapoints;
 }
-function output_table1_header(){
-  d3.select(".outputtable1").selectAll("tr").remove();
-  tr = ["Iter."]
-  for (let i = 1;  i <= AllData.k ; i++) {
-    tr.push("Mue"+i+"");
-  }
-  for (let i = 1;  i <= AllData.k ; i++) {
-    tr.push("Cov."+i+"");
-  }
-  table1
-  .append("tr")
-  .selectAll("th")
-  .data(tr)
-  .enter()
-  .append("th")
-  .text(function (d) {
-    return d;
-  });
-}
-function output_table1(){
-  temp_ary = [];
-  temp_ary.push(iterations);
-  for (let i = 0;  i < AllData.mu_estimates.length; i++) {
-    temp_ary.push(round(AllData.mu_estimates[i],2));
-  }
-  for (let i = 0;  i < AllData.cov_estimates.length; i++) {
-    temp_ary.push(round(AllData.cov_estimates[i],2));
-  }
-  table1
-    .append("tr")
-    .selectAll("td")
-    .data(temp_ary)
-    .enter()
-    .append("td")
-    .text(function (d) {
-      return d;
-    });
-}
-function output_table2() {
 
-  d3.select(".outputtable2").selectAll("tr").remove();
-  console.log(AllData.clusters.likelihood)
-  tr = ["Index"]
+function output_table() {
+  d3.select(".outputtable").selectAll("tr").remove();
   if (likelihoodbtnselected) {
-    for (let i = 1;  i <= AllData.clusters.likelihood.length; i++) {
-      tr.push("Likelihood_k"+(i)+"");
-    }
+    tr = ["Index", "Likelihood_K1", "Likelihood_K1"];
   } else if (marginalbtnselected) {
-    tr.push("Marginal");
+    tr = ["Index", "Marginal"];
   } else if (jointsbtnselected) {
-    for (let i = 1;  i <= AllData.clusters.jointprob.length; i++) {
-      tr.push("JointProb._k"+(i)+"");
-    }
+    tr = ["Index", "Joint_K1", "Joint_K2"];
   } else if (posteriorsbtnselected) {
-    for (let i = 1;  i <= AllData.clusters.posterior.length; i++) {
-      tr.push("Posterior._k"+(i)+"");
-    }
+    tr = ["Groups", "Posteriors_K1", "Posteriors_K1"];
   }
-  table2
+  table
     .append("tr")
     .selectAll("th")
     .data(tr)
@@ -444,10 +394,9 @@ function output_table2() {
     for (let row = 0; row < AllData.clusters.likelihood[0].length; row++) {
       temp_ary = [];
       temp_ary.push(row);
-      for (let i = 0;  i < AllData.clusters.likelihood.length; i++) {
-        temp_ary.push(AllData.clusters.likelihood[i][row]);
-      }
-      table2
+      temp_ary.push(AllData.clusters.likelihood[0][row]);
+      temp_ary.push(AllData.clusters.likelihood[1][row]);
+      table
         .append("tr")
         .selectAll("td")
         .data(temp_ary)
@@ -462,7 +411,7 @@ function output_table2() {
       temp_ary = [];
       temp_ary.push(row);
       temp_ary.push(AllData.clusters.marginal[row]);
-      table2
+      table
         .append("tr")
         .selectAll("td")
         .data(temp_ary)
@@ -476,10 +425,9 @@ function output_table2() {
     for (let row = 0; row < AllData.clusters.jointprob[0].length; row++) {
       temp_ary = [];
       temp_ary.push(row);
-      for (let i = 0;  i < AllData.clusters.jointprob.length; i++) {
-        temp_ary.push(AllData.clusters.jointprob[i][row]);
-      }
-      table2
+      temp_ary.push(AllData.clusters.jointprob[0][row]);
+      temp_ary.push(AllData.clusters.jointprob[1][row]);
+      table
         .append("tr")
         .selectAll("td")
         .data(temp_ary)
@@ -493,10 +441,9 @@ function output_table2() {
     for (let row = 0; row < AllData.clusters.posterior[0].length; row++) {
       temp_ary = [];
       temp_ary.push(row);
-      for (let i = 0;  i < AllData.clusters.posterior.length; i++) {
-        temp_ary.push(AllData.clusters.posterior[i][row]);
-      }
-      table2
+      temp_ary.push(AllData.clusters.posterior[0][row]);
+      temp_ary.push(AllData.clusters.posterior[1][row]);
+      table
         .append("tr")
         .selectAll("td")
         .data(temp_ary)
@@ -844,6 +791,18 @@ function calc_param() {
     dataPoints_stats.T =
       (dataPoints_groups[0].mean - d3.select("#mean0").property("value")) /
       (dataPoints_groups[0].sd / Math.sqrt(dataPoints_groups[0].n));
+    // console.log("sample mean", dataPoints_groups[0].mean);
+    // console.log("sample std", dataPoints_groups[0].sd);
+    // console.log("population mean", population_mean0);
+    // console.log(
+    //   "tscore",
+    //   jStat.tscore(
+    //     dataPoints_groups[0].mean,
+    //     population_mean0,
+    //     dataPoints_groups[0].sd,
+    //     dataPoints_groups[0].n
+    //   )
+    // );
   } else if (dataPoints_groups.length == 2) {
     population_mean1 = d3.select("#mean1").property("value");
     mean0 = dataPoints_groups[0].mean;
@@ -870,6 +829,11 @@ function initialization(K) {
   AllData.clusters.marginal = [];
   AllData.clusters.jointprob = [];
   AllData.clusters.posterior = [];
+  // index1 = Math.floor(Math.random() * AllData.DataPoints.length);
+  // index2 = Math.floor(Math.random() * AllData.DataPoints.length);
+  // console.log(index1, index2);
+  // AllData.mu_estimates.push(AllData.DataPoints[index1]);
+  // AllData.mu_estimates.push(AllData.DataPoints[index2]);
   mu =
     AllData.DataPoints.reduce((total, num) => total + num) /
     AllData.DataPoints.length;
@@ -894,7 +858,44 @@ function initialization(K) {
     AllData.clusters.jointprob.push([]);
     AllData.clusters.posterior.push([]);
     console.log(AllData.mu_estimates, AllData.cov_estimates);
+    var dropDownOptions = AllData.mu_estimates;
+    dropDown1
+      .selectAll("option")
+      .data(dropDownOptions)
+      .enter()
+      .append("option")
+      .text(function (d) {
+        return d;
+      });
+    var dropDownOptions = AllData.cov_estimates;
+    dropDown2
+      .selectAll("option")
+      .data(dropDownOptions)
+      .enter()
+      .append("option")
+      .text(function (d) {
+        return d;
+      });
   }
+  console.log(
+    "Initial Parameters",
+    "mu",
+    AllData.mu_estimates,
+    "cov",
+    AllData.cov_estimates
+  );
+  // for (iteration = 1; iteration < 10; iteration++) {
+  //   console.log(
+  //     "iteration",
+  //     iteration,
+  //     "mu",
+  //     AllData.mu_estimates,
+  //     "cov",
+  //     AllData.cov_estimates
+  //   );
+  //   expectation(2);
+  //   maximization(2);
+  // }
 }
 
 function expectation(K) {
@@ -924,7 +925,6 @@ function expectation(K) {
   console.log(AllData);
 }
 function maximization(K) {
-  iterations++;
   mu = [];
   for (k = 0; k < K; k++) {
     total_posterior = AllData.clusters.posterior[k].reduce(
@@ -947,21 +947,4 @@ function maximization(K) {
         Math.pow(x - AllData.mu_estimates[k], 2) * normalized_posterior[index]
     ).reduce((total, num) => total + num);
   }
-  // dropDown1
-  //     .selectAll("option")
-  //     .data(AllData.cov_estimates)
-  //     .enter()
-  //     .append("option")
-  //     .text(function (d) {
-  //       return d;
-  //     });
-  // dropDown2
-  //     .selectAll("option")
-  //     .data(AllData.mu_estimates)
-  //     .enter()
-  //     .append("option")
-  //     .text(function (d) {
-  //       return d;
-  //     });
-	console.log(AllData.mu_estimates)
 }
